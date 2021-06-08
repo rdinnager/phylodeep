@@ -1,0 +1,28 @@
+---
+title: "Phylogenetic Regularised Regression Maths"
+author: "Russell Dinnage"
+date: "17/11/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Bayesian Regularised Regression on Phylogenies (BRRP)
+
+A vector valued trait in species $i$, $T_i$ can be modeled as:
+
+$$T_i = \alpha + \sum_j^{n_{\textrm{edge}}}\beta_j\gamma_j(i)$$
+
+where $n_{\textrm{edge}}$ is the number of edges in the phylogeny and
+
+$$\gamma_j(i) = \left\{ \begin{array}{ll}
+0 & j \notin P_i \\
+l_j & j \in P_i
+\end{array}\right.$$
+
+where $P_i$ is the set of all edges leading from the root to species $i$, and $l_j$ is the branchlength associated with edge $j$. Then $\alpha$ is the trait value at the root (equivalent to the intercept in linear regression), and the $\beta_j$ parameters are the rates of evolution in the trait along edge $j$ (equivalent to regression coefficients). This is an over-parameterized linear regression. Over-parameterization is solved through regularisation (or weakly informative priors in the Bayesian formulation).
+

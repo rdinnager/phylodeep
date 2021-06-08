@@ -1,11 +1,11 @@
 library(targets)
-library(conflicted)
+# This is an example target script.
+# Read the tar_script() help file for details.
 
-# Set target-specific options such as packages.
-tar_option_set(packages = c("dplyr",
-                            "ape",
-                            "sf",
-                            "readr"))
+source("packages.R")
+
+## Load your R files
+lapply(list.files("./R", full.names = TRUE), source)
 
 # dryad_package_dois('10.5061/dryad.83s7k')
 # dryad_files('10.5061/dryad.83s7k')
@@ -43,7 +43,8 @@ targets <- list(
                                       col_names = "name")),
   
   tar_target(Oz_squamates, Oz_reps %>%
-               filter(Binomial %in% squamate_names$name)),
+               filter(Binomial %in% squamate_names$name) %>%
+               mutate(Binomial = gsub(" ", "_", Binomial))),
   
   tar_target(squamate_trees, read.tree(squamate_tree_file)),
   
@@ -54,8 +55,50 @@ targets <- list(
   tar_target(Oz_squamate_tree, 
              drop.tip(squamate_tree,
                       which(!squamate_tree$tip.label %in%
-                              gsub(" ", "_",
-                                   Oz_squamates$Binomial))))
+                              Oz_squamate_sdf_samples$species))),
+  
+  tar_target(Oz_squamate_phylo_ids, 
+             dplyr::tibble(species = Oz_squamate_tree$tip.label,
+                           phylo_id = 1:length(Oz_squamate_tree$tip.label))),
+  
+  tar_target(Oz_squamate_sdf_samples,
+             get_Oz_squamate_sdf_samples(Oz_squamates,
+                                         Oz),
+             format = "fst_tbl"),
+  
+  tar_target(Oz_squamate_sdf_train_val,
+             get_Oz_squamate_sdf_train_val(Oz_squamate_sdf_samples),
+             format = "qs"),
+  
+  tar_target(Oz_squamate_phylo_x,
+             calc_Oz_squamate_phylo_x(Oz_squamate_tree,
+                                      Oz_squamate_phylo_ids)),
+  
+  tar_target(Oz_squamate_phylo_train_dat,
+             make_Oz_squamate_train_dat(Oz_squamate_sdf_train_val,
+                                        Oz_squamate_phylo_ids),
+             format = "qs"),
+  
+  tar_target(Oz_squamate_trained_model,
+             train_Oz_squamate_model(Oz_squamate_phylo_train_dat,
+                                     Oz_squamate_phylo_x,
+                                     save_file = "trained_models/Oz_squamate_ranges_phylo.hd5")),
+  
+  tar_target(Oz_squamate_trained_model_reload,
+             list(model_weights = Oz_squamate_trained_model,
+                  required_data = Oz_squamate_phylo_x)),
+  
+  tar_target(Oz_prediction_grid, rngnet::make_prediction_grid(NULL,
+                                                              bg = Oz,
+                                                              use_coords = TRUE)),
+  
+  tar_target(Oz_squamate_compare_preds,
+             compare_Oz_squamate_predictions(Oz_squamate_trained_model_reload,
+                                             Oz_squamate_phylo_ids,
+                                             Oz_prediction_grid,
+                                             Oz_squamates)),
+  
+  NULL
   
 )
 
